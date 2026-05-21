@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>🍽️ Gestor de Classificadores</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #eef2f7;
+            color: #0f172a;
+            min-height: 100vh;
+        }
+
+        body {
+            padding: 18px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: auto;
+        }
+
+        header {
+            height: 72px;
+            background: rgba(255, 255, 255, .92);
+            backdrop-filter: blur(8px);
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            margin-bottom: 18px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .subtitle {
+            margin-top: 3px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .status {
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .connected {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+        }
+
+        .disconnected {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media(max-width:1000px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+        }
+
+        .card h2 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #dbe2ea;
+            border-radius: 12px;
+            background: #fff;
+            color: #0f172a;
+            padding: 0 14px;
+            font-size: 13px;
+            transition: .2s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #94a3b8;
+            box-shadow: 0 0 0 3px rgba(148, 163, 184, .15);
+        }
+
+        button {
+            border: none;
+            border-radius: 12px;
+            height: 42px;
+            padding: 0 18px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary {
+            background: #0f172a;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #1e293b;
+        }
+
+        .btn-success {
+            background: #059669;
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            background: #047857;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-purple {
+            background: #7c3aed;
+            color: #fff;
+        }
+
+        .btn-purple:hover {
+            background: #6d28d9;
+        }
+
+        .btn-orange {
+            background: #ea580c;
+            color: #fff;
+        }
+
+        .btn-orange:hover {
+            background: #c2410c;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .result {
+            margin-top: 18px;
+        }
+
+        .alert {
+            border-radius: 14px;
+            padding: 14px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .alert-success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        .categorias {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 14px;
+        }
+
+        .categoria {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .categoria h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 14px;
+        }
+
+        .item {
+            background: #fff;
+            border: 1px solid #edf2f7;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .item strong {
+            color: #0f172a;
+        }
+
+        .loading {
+            width: 34px;
+            height: 34px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #0f172a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        footer {
+            margin-top: 18px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+        }
+
+        .full {
+            grid-column: 1/-1;
+        }
+
+        .json {
+            margin-top: 14px;
+            background: #0f172a;
+            color: #22c55e;
+            border-radius: 14px;
+            padding: 16px;
+            font-size: 12px;
+            font-family: monospace;
+            overflow: auto;
+            max-height: 300px;
+        }
+
+        hr {
+            border: none;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        /* treino inline */
+        #treino-status {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            align-self: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <header>
+            <div>
+                <h1>🍽️ Gestor de Classificadores</h1>
+                <p class="subtitle">
+                    Sistema conectado com FastAPI + IA
+                </p>
+            </div>
+
+            <div id="status" class="status disconnected">
+                ❌ Desconectado
+            </div>
+        </header>
+
+        <div class="grid">
+
+            <!-- CLASSIFICADOR -->
+            <div class="card">
+                <h2>📸 Classificador</h2>
+                <p style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.5;">
+                    Abrir sistema de classificação em tempo real.
+                </p>
+                <button class="btn-primary" style="width:100%;height:48px;font-size:14px;"
+                    onclick="window.location.href='classificador.html'">
+                    🚀 Abrir Classificador
+                </button>
+            </div>
+
+            <!-- NOVA CATEGORIA -->
+            <div class="card">
+                <h2>📁 Criar Categoria</h2>
+                <div class="form-group">
+                    <label>Nome da categoria</label>
+                    <input type="text" id="novaCategoria">
+                </div>
+                <button class="btn-success" onclick="criarCategoria()">
+                    ➕ Criar Categoria
+                </button>
+
+                <hr style="margin:25px 0;">
+
+                <h2>🖼️ Adicionar Foto</h2>
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <select id="categoriaFoto"></select>
+                </div>
+                <div class="form-group">
+                    <label>Imagem</label>
+                    <input type="file" id="fotoCategoria">
+                </div>
+                <button class="btn-primary" onclick="adicionarFoto()">
+                    💾 Enviar Foto
+                </button>
+                <div id="mensagemCategoria" class="result"></div>
+            </div>
+
+            <!-- BANCO -->
+            <div class="card full">
+                <h2>📚 Banco de Categorias</h2>
+
+                <div style="margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+                    <button class="btn-primary" onclick="carregarCategorias()">
+                        🔄 Atualizar
+                    </button>
+                    <button class="btn-orange" id="btnTreinar" onclick="treinarModelo()">
+                        🧠 Treinar Modelo
+                    </button>
+                    <span id="treino-status"></span>
+                </div>
+
+                <div id="categoriasContainer" class="categorias"></div>
+            </div>
+
+        </div>
+
+        <footer>
+            <p>🚀 Frontend conectado na API FastAPI</p>
+            <p style="margin-top:10px;">http://192.168.10.115:8000</p>
+        </footer>
+
+    </div>
+
+    <script>
+
+        const API = "http://192.168.10.115:8000";
+        let _polling = null;
+
+        /* =========================================================
+           HELPERS
+        ========================================================= */
+
+        function mostrarMensagem(el, tipo, texto) {
+            el.innerHTML = `<div class="alert alert-${tipo}">${texto}</div>`;
+        }
+
+        function arquivoParaBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = () => resolve(reader.result);
+
+                reader.onerror = reject;
+
+                reader.readAsDataURL(file);
+            });
+        }
+
+        /* =========================================================
+           STATUS API
+        ========================================================= */
+
+        async function verificarAPI() {
+
+            const status = document.getElementById("status");
+
+            try {
+
+                const req = await fetch(`${API}/status`);
+                const data = await req.json();
+
+                if (data.online) {
+
+                    status.innerHTML = "✅ API Conectada";
+                    status.className = "status connected";
+
+                } else {
+
+                    status.innerHTML = "❌ Offline";
+                    status.className = "status disconnected";
+                }
+
+            } catch (e) {
+
+                status.innerHTML = "❌ API Offline";
+                status.className = "status disconnected";
+            }
+        }
+
+        /* =========================================================
+           TREINAR MODELO
+        ========================================================= */
+
+        async function treinarModelo() {
+
+            const btn = document.getElementById("btnTreinar");
+            const label = document.getElementById("treino-status");
+
+            btn.disabled = true;
+            btn.textContent = "⏳ Treinando...";
+            label.textContent = "Aguarde...";
+
+            try {
+
+                const req = await fetch(`${API}/treinar`, {
+                    method: "POST"
+                });
+
+                const data = await req.json();
+
+                if (!req.ok) {
+                    throw new Error(data.detail || "Erro ao iniciar treino");
+                }
+
+                label.textContent = "🔄 Processando...";
+
+                _polling = setInterval(async () => {
+
+                    try {
+
+                        const s = await fetch(`${API}/status`);
+                        const sd = await s.json();
+
+                        if (!sd.treino_em_andamento) {
+
+                            clearInterval(_polling);
+
+                            btn.disabled = false;
+                            btn.textContent = "🧠 Treinar Modelo";
+
+                            label.textContent = sd.modelo_carregado
+                                ? `✅ ${sd.classes.length} classe(s)`
+                                : "⚠️ Sem classes";
+
+                            verificarAPI();
+                            carregarCategorias();
+                        }
+
+                    } catch (e) {
+                        console.error(e);
+                    }
+
+                }, 2000);
+
+            } catch (e) {
+
+                clearInterval(_polling);
+
+                btn.disabled = false;
+                btn.textContent = "🧠 Treinar Modelo";
+
+                label.textContent = `❌ ${e.message}`;
+            }
+        }
+
+        /* =========================================================
+           CLASSIFICAR IMAGEM (BASE64)
+        ========================================================= */
+
+        async function classificarImagem() {
+
+            const arquivo = document.getElementById("imagemClassificar")?.files?.[0];
+
+            if (!arquivo) {
+                alert("Selecione uma imagem");
+                return;
+            }
+
+            const resultado = document.getElementById("resultadoClassificacao");
+
+            resultado.innerHTML = `<div class="loading"></div>`;
+
+            try {
+
+                const imagemBase64 = await arquivoParaBase64(arquivo);
+
+                const req = await fetch(`${API}/classify`, {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        imagem: imagemBase64
+                    })
+                });
+
+                const data = await req.json();
+
+                if (!req.ok) {
+                    throw new Error(data.detail || "Erro ao classificar");
+                }
+
+                resultado.innerHTML = `
+            <div class="alert alert-success">
+                <strong>Classe:</strong> ${data.classe || "Indefinido"}<br>
+                <strong>Item:</strong> ${data.item || "-"}<br>
+                <strong>Confiança:</strong> ${(data.confianca * 100).toFixed(2)}%
+            </div>
+
+            <div class="json">
+${JSON.stringify(data, null, 2)}
+            </div>
+        `;
+
+            } catch (e) {
+
+                resultado.innerHTML = `
+            <div class="alert alert-error">
+                ❌ ${e.message}
+            </div>
+        `;
+            }
+        }
+
+        /* =========================================================
+           CRIAR CATEGORIA
+        ========================================================= */
+
+        async function criarCategoria() {
+
+            const nome = document.getElementById("novaCategoria").value.trim();
+
+            if (!nome) {
+                alert("Digite um nome");
+                return;
+            }
+
+            try {
+
+                const req = await fetch(`${API}/categorias`, {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        nome
+                    })
+                });
+
+                const data = await req.json();
+
+                if (!req.ok) {
+                    throw new Error(data.detail || "Erro ao criar categoria");
+                }
+
+                mostrarMensagem(
+                    document.getElementById("mensagemCategoria"),
+                    "success",
+                    "✅ Categoria criada"
+                );
+
+                document.getElementById("novaCategoria").value = "";
+
+                carregarCategorias();
+
+            } catch (e) {
+
+                mostrarMensagem(
+                    document.getElementById("mensagemCategoria"),
+                    "error",
+                    `❌ ${e.message}`
+                );
+            }
+        }
+
+        /* =========================================================
+           ADICIONAR FOTO (BASE64)
+        ========================================================= */
+
+        async function adicionarFoto() {
+
+            const categoria = document.getElementById("categoriaFoto").value;
+
+            const arquivo = document.getElementById("fotoCategoria").files[0];
+
+            if (!categoria || !arquivo) {
+                alert("Selecione categoria e imagem");
+                return;
+            }
+
+            try {
+
+                const imagemBase64 = await arquivoParaBase64(arquivo);
+
+                const req = await fetch(`${API}/categorias/${categoria}/fotos`, {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        imagem: imagemBase64,
+                        nome_arquivo: arquivo.name
+                    })
+                });
+
+                const data = await req.json();
+
+                if (!req.ok) {
+                    throw new Error(data.detail || "Erro ao enviar imagem");
+                }
+
+                mostrarMensagem(
+                    document.getElementById("mensagemCategoria"),
+                    "success",
+                    `✅ Foto adicionada: ${data.arquivo}`
+                );
+
+                document.getElementById("fotoCategoria").value = "";
+
+                carregarCategorias();
+
+            } catch (e) {
+
+                mostrarMensagem(
+                    document.getElementById("mensagemCategoria"),
+                    "error",
+                    `❌ ${e.message}`
+                );
+            }
+        }
+
+        /* =========================================================
+           REMOVER CATEGORIA
+        ========================================================= */
+
+        async function removerCategoria(nome) {
+
+            if (!confirm(`Excluir categoria "${nome}"?`)) {
+                return;
+            }
+
+            try {
+
+                const req = await fetch(`${API}/categorias/${nome}`, {
+                    method: "DELETE"
+                });
+
+                const data = await req.json();
+
+                if (!req.ok) {
+                    throw new Error(data.detail || "Erro ao remover");
+                }
+
+                carregarCategorias();
+
+            } catch (e) {
+
+                alert(e.message);
+            }
+        }
+
+        /* =========================================================
+           CARREGAR CATEGORIAS
+        ========================================================= */
+
+        async function carregarCategorias() {
+
+            try {
+
+                const req = await fetch(`${API}/categorias`);
+
+                const data = await req.json();
+
+                const container = document.getElementById("categoriasContainer");
+
+                const select = document.getElementById("categoriaFoto");
+
+                container.innerHTML = "";
+
+                select.innerHTML = "";
+
+                if (!Array.isArray(data)) return;
+
+                data.forEach(cat => {
+
+                    /* SELECT */
+
+                    const option = document.createElement("option");
+
+                    option.value = cat.nome;
+                    option.textContent = cat.nome;
+
+                    select.appendChild(option);
+
+                    /* CARD */
+
+                    const div = document.createElement("div");
+
+                    div.className = "categoria";
+
+                    let html = `
+                <h3>
+                    📁 ${cat.nome} (${cat.total})
+                </h3>
+            `;
+
+                    /* FOTOS DIRETAS */
+
+                    if (cat.fotos && cat.fotos.length) {
+
+                        cat.fotos.forEach(f => {
+
+                            html += `
+                        <div class="item">
+                            📷 ${f}
+                        </div>
+                    `;
+                        });
+                    }
+
+                    /* ITENS */
+
+                    if (cat.itens && cat.itens.length) {
+
+                        cat.itens.forEach(i => {
+
+                            html += `
+                        <div class="item">
+                            <strong>🍽️ ${i.nome}</strong><br>
+                            Fotos: ${i.total}
+                        </div>
+                    `;
+                        });
+                    }
+
+                    html += `
+                <button
+                    class="btn-danger"
+                    style="margin-top:10px;width:100%;"
+                    onclick="removerCategoria('${cat.nome}')"
+                >
+                    🗑️ Remover
+                </button>
+            `;
+
+                    div.innerHTML = html;
+
+                    container.appendChild(div);
+                });
+
+            } catch (e) {
+
+                console.error(e);
+            }
+        }
+
+        /* =========================================================
+           INIT
+        ========================================================= */
+
+        window.onload = () => {
+
+            verificarAPI();
+
+            carregarCategorias();
+
+            setInterval(verificarAPI, 5000);
+        };
+
+    </script>
+
+</body>
+
+</html>
