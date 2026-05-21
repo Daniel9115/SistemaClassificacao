@@ -8,6 +8,7 @@
 
 - [Como funciona](#-como-funciona)
 - [Estrutura de pastas](#-estrutura-de-pastas)
+- [Instalação e execução](#-instalação-e-execução)
 - [Fluxo completo de uso](#-fluxo-completo-de-uso)
 - [Endpoints](#-endpoints)
   - [GET /status](#get-status)
@@ -97,6 +98,40 @@ projeto/
 
 Categorias com subpastas (itens) geram labels no formato `"categoria/item"`.
 
+---
+
+## 🚀 Instalação e execução
+
+### Pré-requisitos
+
+- Python 3.9+
+- pip
+
+### Passos
+
+```bash
+# 1. Clone o repositório ou copie os arquivos
+git clone <url-do-repo>
+cd projeto
+
+# 2. (Opcional) Crie um ambiente virtual
+python -m venv venv
+source venv/bin/activate       # Linux/Mac
+venv\Scripts\activate          # Windows
+
+# 3. Execute a API — as dependências são instaladas automaticamente
+python api.py
+```
+
+> As dependências (`fastapi`, `uvicorn`, `tensorflow`, `opencv-python`, `numpy`, `python-multipart`) são instaladas automaticamente na primeira execução caso não estejam presentes.
+
+A API estará disponível em:
+
+| URL | Descrição |
+|---|---|
+| `http://localhost:8000` | Raiz da API |
+| `http://localhost:8000/docs` | Swagger UI (documentação interativa) |
+| `http://localhost:8000/redoc` | ReDoc (documentação alternativa) |
 
 ---
 
