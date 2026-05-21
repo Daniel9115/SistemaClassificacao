@@ -1,0 +1,444 @@
+object FormMain: TFormMain
+  Left = 0
+  Top = 0
+  Caption = 'Classificador de Pratos'
+  ClientHeight = 661
+  ClientWidth = 1280
+  Color = 15658734
+  Constraints.MinHeight = 700
+  Constraints.MinWidth = 1100
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -12
+  Font.Name = 'Segoe UI'
+  Font.Style = []
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  TextHeight = 15
+  object pnlHeader: TPanel
+    Left = 0
+    Top = 0
+    Width = 1280
+    Height = 64
+    Align = alTop
+    BevelOuter = bvNone
+    Color = clWhite
+    ParentBackground = False
+    TabOrder = 0
+    DesignSize = (
+      1280
+      64)
+    object lblTitulo: TLabel
+      Left = 24
+      Top = 12
+      Width = 165
+      Height = 21
+      Caption = 'Classificador de Pratos'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 1644825
+      Font.Height = -16
+      Font.Name = 'Segoe UI Semibold'
+      Font.Style = []
+      ParentFont = False
+    end
+    object lblSubtitulo: TLabel
+      Left = 24
+      Top = 34
+      Width = 142
+      Height = 13
+      Caption = 'Identifica'#231#227'o em tempo real'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 7697781
+      Font.Height = -11
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
+    end
+    object pnlOnline: TPanel
+      Left = 1135
+      Top = 16
+      Width = 120
+      Height = 32
+      Anchors = [akTop, akRight]
+      BevelOuter = bvNone
+      Color = 15592941
+      ParentBackground = False
+      TabOrder = 0
+      object shpOnline: TShape
+        Left = 13
+        Top = 10
+        Width = 12
+        Height = 12
+        Brush.Color = 5025616
+        Pen.Style = psClear
+        Shape = stCircle
+      end
+      object lblOnline: TLabel
+        Left = 31
+        Top = 8
+        Width = 35
+        Height = 15
+        Caption = 'Online'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 43520
+        Font.Height = -12
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+    end
+  end
+  object pnlSidebar: TPanel
+    Left = 986
+    Top = 64
+    Width = 294
+    Height = 597
+    Align = alRight
+    BevelOuter = bvNone
+    Color = 15658734
+    Padding.Left = 16
+    Padding.Top = 16
+    Padding.Right = 16
+    Padding.Bottom = 16
+    ParentBackground = False
+    TabOrder = 1
+    object pnlResultado: TPanel
+      AlignWithMargins = True
+      Left = 19
+      Top = 19
+      Width = 256
+      Height = 160
+      Margins.Bottom = 14
+      Align = alTop
+      BevelOuter = bvNone
+      Color = clWhite
+      ParentBackground = False
+      TabOrder = 0
+      object lblResultadoTitulo: TLabel
+        Left = 13
+        Top = 18
+        Width = 48
+        Height = 12
+        Caption = 'RESULTADO'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 10197915
+        Font.Height = -9
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblFoodName: TLabel
+        Left = 13
+        Top = 44
+        Width = 228
+        Height = 38
+        AutoSize = False
+        Caption = 'Nenhum prato'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 1644825
+        Font.Height = -29
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+        WordWrap = True
+      end
+      object lblConfiancaTxt: TLabel
+        Left = 13
+        Top = 110
+        Width = 52
+        Height = 13
+        Caption = 'Confian'#231'a'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 7697781
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblConfValue: TLabel
+        Left = 233
+        Top = 110
+        Width = 8
+        Height = 13
+        Alignment = taRightJustify
+        Caption = '--'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 1644825
+        Font.Height = -11
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+      object pnlTrack: TPanel
+        Left = 13
+        Top = 132
+        Width = 228
+        Height = 8
+        BevelOuter = bvNone
+        Color = 15132390
+        ParentBackground = False
+        TabOrder = 0
+        object pnlFill: TPanel
+          Left = 0
+          Top = 0
+          Width = 0
+          Height = 8
+          Align = alLeft
+          BevelOuter = bvNone
+          Color = 1644825
+          ParentBackground = False
+          TabOrder = 0
+        end
+      end
+    end
+    object pnlStatus: TPanel
+      AlignWithMargins = True
+      Left = 19
+      Top = 196
+      Width = 256
+      Height = 100
+      Margins.Bottom = 14
+      Align = alTop
+      BevelOuter = bvNone
+      Color = clWhite
+      ParentBackground = False
+      TabOrder = 1
+      object lblStatusTitulo: TLabel
+        Left = 13
+        Top = 20
+        Width = 30
+        Height = 12
+        Caption = 'STATUS'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 10197915
+        Font.Height = -9
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+      object pnlDetect: TPanel
+        Left = 13
+        Top = 42
+        Width = 228
+        Height = 40
+        BevelOuter = bvNone
+        Color = 15132390
+        ParentBackground = False
+        TabOrder = 0
+        object lblDetect: TLabel
+          Left = 0
+          Top = 12
+          Width = 228
+          Height = 15
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Aguardando detec'#231#227'o'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = 7697781
+          Font.Height = -11
+          Font.Name = 'Segoe UI Semibold'
+          Font.Style = []
+          ParentFont = False
+        end
+      end
+    end
+    object pnlInfo: TPanel
+      AlignWithMargins = True
+      Left = 19
+      Top = 313
+      Width = 256
+      Height = 220
+      Align = alTop
+      BevelOuter = bvNone
+      Color = clWhite
+      ParentBackground = False
+      TabOrder = 2
+      object lblInfoTitulo: TLabel
+        Left = 13
+        Top = 19
+        Width = 65
+        Height = 12
+        Caption = 'INFORMA'#199#213'ES'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 10197915
+        Font.Height = -9
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblApiTxt: TLabel
+        Left = 13
+        Top = 55
+        Width = 18
+        Height = 15
+        Caption = 'API'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 7697781
+        Font.Height = -12
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblApi: TLabel
+        Left = 162
+        Top = 55
+        Width = 79
+        Height = 15
+        Alignment = taRightJustify
+        Caption = 'localhost:8000'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 1644825
+        Font.Height = -12
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblUpdateTxt: TLabel
+        Left = 13
+        Top = 93
+        Width = 61
+        Height = 15
+        Caption = 'Atualiza'#231#227'o'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 7697781
+        Font.Height = -12
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblUpdate: TLabel
+        Left = 221
+        Top = 93
+        Width = 20
+        Height = 15
+        Alignment = taRightJustify
+        Caption = '1.2s'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 1644825
+        Font.Height = -12
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblModeloTxt: TLabel
+        Left = 13
+        Top = 131
+        Width = 41
+        Height = 15
+        Caption = 'Modelo'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 7697781
+        Font.Height = -12
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblModelo: TLabel
+        Left = 193
+        Top = 131
+        Width = 48
+        Height = 15
+        Alignment = taRightJustify
+        Caption = 'IA Vision'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 1644825
+        Font.Height = -12
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+    end
+  end
+  object pnlCameraCard: TPanel
+    Left = 0
+    Top = 64
+    Width = 986
+    Height = 597
+    Align = alClient
+    BevelOuter = bvNone
+    Color = 15658734
+    Padding.Left = 16
+    Padding.Top = 16
+    Padding.Right = 16
+    Padding.Bottom = 16
+    ParentBackground = False
+    TabOrder = 2
+    object Panel1: TPanel
+      AlignWithMargins = True
+      Left = 19
+      Top = 19
+      Width = 948
+      Height = 500
+      Margins.Bottom = 16
+      Align = alClient
+      BevelOuter = bvNone
+      Color = clWhite
+      ParentBackground = False
+      TabOrder = 0
+      DesignSize = (
+        948
+        500)
+      object lblCamera: TLabel
+        Left = 20
+        Top = 18
+        Width = 40
+        Height = 15
+        Caption = 'Camera'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 1644825
+        Font.Height = -12
+        Font.Name = 'Segoe UI Semibold'
+        Font.Style = []
+        ParentFont = False
+      end
+      object lblTempo: TLabel
+        Left = 860
+        Top = 18
+        Width = 55
+        Height = 13
+        Anchors = [akTop, akRight]
+        Caption = 'Tempo real'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = 10197915
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
+      end
+      object imgPreview: TImage
+        Left = 20
+        Top = 50
+        Width = 907
+        Height = 430
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        Center = True
+        Proportional = True
+        Stretch = True
+        ExplicitWidth = 901
+        ExplicitHeight = 489
+      end
+    end
+    object btnSelecionar: TButton
+      AlignWithMargins = True
+      Left = 19
+      Top = 538
+      Width = 948
+      Height = 40
+      Align = alBottom
+      Caption = 'Selecionar Imagem'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -12
+      Font.Name = 'Segoe UI Semibold'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 1
+      OnClick = btnSelecionarClick
+    end
+  end
+  object dlgOpen: TOpenDialog
+    Filter = 'Imagens|*.jpg;*.jpeg;*.png;*.bmp'
+    Left = 1112
+    Top = 608
+  end
+end
