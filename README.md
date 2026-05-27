@@ -1,264 +1,396 @@
-# 🍽️ Classificador de Pratos — API
+# 🍽️ Classificador de Pratos + QR/Barcode de Comanda — API
 
-> API REST construída com **FastAPI** que utiliza **MobileNetV2** (transfer learning) para classificar imagens de pratos/alimentos de forma rápida e sem necessidade de treinamento tradicional com GPU. O sistema usa uma abordagem de **protótipos por similaridade de cosseno**, tornando o retreino instantâneo ao adicionar novas fotos.
+API REST construída com **FastAPI** que utiliza **MobileNetV2** (transfer learning) para classificar imagens de pratos/alimentos usando uma abordagem de **protótipos por similaridade de cosseno**.
+
+Além da classificação de pratos, a API também lê números de comanda via:
+
+- QR Code
+- Código de barras
+
+utilizando `pyzbar`.
+
+A solução foi projetada para:
+
+- funcionar bem em CPU
+- não exigir GPU
+- permitir retreino instantâneo
+- adicionar novas categorias facilmente
+- operar com poucos exemplos por classe
 
 ---
 
-## 📑 Sumário
+# 📑 Sumário
 
+- [Visão geral](#-visão-geral)
 - [Como funciona](#-como-funciona)
-- [Estrutura de pastas](#-estrutura-de-pastas)
-- [Instalação e execução](#-instalação-e-execução)
-- [Fluxo completo de uso](#-fluxo-completo-de-uso)
+- [Estrutura do projeto](#-estrutura-do-projeto)
+- [Fluxo completo](#-fluxo-completo)
+- [Instalação](#-instalação)
+- [Execução](#-execução)
+- [Documentação automática](#-documentação-automática)
 - [Endpoints](#-endpoints)
   - [GET /status](#get-status)
   - [POST /treinar](#post-treinar)
   - [POST /classify](#post-classify)
   - [GET /categorias](#get-categorias)
   - [POST /categorias](#post-categorias)
-  - [DELETE /categorias/{nome}](#delete-categoriasnome)
-  - [POST /categorias/{nome}/fotos](#post-categoriasнomefotos)
-  - [DELETE /categorias/{nome}/fotos/{arquivo}](#delete-categoriasnomefotosarquivo)
-  - [POST /categorias/{nome}/itens](#post-categoriasnomeitens)
-  - [DELETE /categorias/{nome}/itens/{item}](#delete-categoriasnomeitensitem)
-  - [POST /categorias/{nome}/itens/{item}/fotos](#post-categoriasnomeitensitemfotos)
-  - [DELETE /categorias/{nome}/itens/{item}/fotos/{arquivo}](#delete-categoriasnomeitensitemfotosarquivo)
+  - [DELETE /categorias/{categoria}](#delete-categoriascategoria)
+  - [POST /categorias/{categoria}/itens](#post-categoriascategoriaitens)
+  - [DELETE /categorias/{categoria}/itens/{item}](#delete-categoriascategoriaitensitem)
+  - [POST /categorias/{categoria}/fotos](#post-categoriascategoriafotos)
+  - [DELETE /categorias/{categoria}/fotos/{foto}](#delete-categoriascategoriafotosfoto)
+  - [POST /categorias/{categoria}/itens/{item}/fotos](#post-categoriascategoriaitensitemfotos)
+  - [DELETE /categorias/{categoria}/itens/{item}/fotos/{foto}](#delete-categoriascategoriaitensitemfotosfoto)
 - [Conceitos técnicos](#-conceitos-técnicos)
+- [Performance](#-performance)
+- [Limitações](#-limitações)
 - [Perguntas frequentes](#-perguntas-frequentes)
+- [Licença](#-licença)
 
 ---
 
-## 🧠 Como funciona
+# 🧠 Visão geral
 
-O sistema **não realiza treinamento clássico com backpropagation**. Em vez disso, usa uma estratégia chamada **classificação por protótipos**:
+A API possui dois objetivos principais:
 
-```
+## 1. Classificação de pratos
+
+Identifica automaticamente o prato/alimento presente em uma imagem utilizando:
+
+- MobileNetV2
+- embeddings vetoriais
+- similaridade de cosseno
+- classificação por protótipos
+
+---
+
+## 2. Leitura de comandas
+
+Detecta QR Codes ou códigos de barras presentes na imagem e extrai números de comanda automaticamente.
+
+---
+
+# ⚙️ Como funciona
+
+A API não realiza treinamento clássico com backpropagation.
+
+Em vez disso, utiliza uma abordagem extremamente rápida chamada:
+
+# Classificação por Protótipos
+
+Fluxo completo:
+
+```text
 Imagem de entrada
        │
-       ▼
-  MobileNetV2               ← rede pré-treinada no ImageNet (congelada)
-  (extrator de features)
+       ├──────────────────────────────┐
+       │                              │
+       ▼                              ▼
+  MobileNetV2                 QR / Barcode
+ (feature extractor)            (pyzbar)
+       │                              │
+       ▼                              ▼
+ Embedding 1280d               Número da comanda
        │
        ▼
-  Embedding (vetor)         ← representação numérica de 1280 dimensões
+Similaridade de cosseno
        │
        ▼
-  Similaridade de cosseno   ← compara com todos os protótipos salvos
+ Softmax
        │
        ▼
-  Softmax → probabilidades  ← quanto a imagem se parece com cada classe
-       │
-       ▼
-  Classe + confiança
+Classe + confiança + comanda
 ```
-
-**Durante o treino**, para cada categoria o sistema:
-1. Lê todas as imagens da pasta correspondente
-2. Aplica data augmentation (flip, brilho, rotação) se houver poucas fotos
-3. Extrai o embedding de cada imagem
-4. Calcula a **média** dos embeddings → isso é o **protótipo** da classe
-5. Salva os protótipos em disco (`models/prototipos.npy`)
-
-**Durante a classificação**, a imagem nova é comparada com todos os protótipos. A classe com maior similaridade de cosseno vence — desde que a confiança supere o limiar de **50%**; caso contrário, o resultado é marcado como `indefinido`.
 
 ---
 
-## 📁 Estrutura de pastas
+# 🧩 Pipeline de treino
 
-```
+Durante o treino:
+
+1. A API percorre todas as categorias do `BancoImagens`
+2. Cada imagem é convertida em embedding
+3. Embeddings da mesma classe são agrupados
+4. A média vetorial é calculada
+5. O resultado vira o protótipo daquela classe
+
+---
+
+# 🧠 Pipeline de classificação
+
+Durante a classificação:
+
+1. A imagem vira um embedding
+2. O embedding é comparado com todos os protótipos
+3. A maior similaridade vence
+4. Softmax transforma similaridade em probabilidade
+5. Se a confiança for menor que `70%`, o resultado vira `indefinido`
+
+---
+
+# 📁 Estrutura do projeto
+
+```text
 projeto/
 │
-├── api.py                        ← código da API (este arquivo)
+├── api.py
 │
-├── BancoImagens/                 ← banco de imagens para treino
-│   ├── pizza/                    ← categoria simples
+├── BancoImagens/
+│   ├── pizza/
 │   │   ├── pizza_1.jpg
 │   │   └── pizza_2.jpg
-│   ├── massas/                   ← categoria com itens (subpastas)
+│   │
+│   ├── massas/
 │   │   ├── carbonara/
 │   │   │   ├── carbonara_1.jpg
 │   │   │   └── carbonara_2.jpg
+│   │   │
 │   │   └── bolonhesa/
 │   │       └── bolonhesa_1.jpg
-│   └── ...
+│   │
+│   └── sushi/
+│       ├── sushi_1.jpg
+│       └── sushi_2.jpg
 │
-└── models/                       ← gerado automaticamente após treino
-    ├── classificador.tflite      ← modelo exportado (uso mobile/edge)
-    ├── labels.json               ← lista de classes na ordem dos protótipos
-    ├── prototipos.npy            ← vetores protótipo de cada classe
-    └── banco_snapshot.json       ← snapshot do banco para detectar mudanças
+└── models/
+    ├── labels.json
+    ├── prototipos.npy
+    └── banco_snapshot.json
 ```
-
-### Lógica de organização do BancoImagens
-
-| Estrutura | Resultado no label |
-|---|---|
-| `BancoImagens/pizza/` com fotos diretas | classe = `"pizza"` |
-| `BancoImagens/massas/carbonara/` com fotos | classe = `"massas"`, item = `"carbonara"` |
-
-Categorias com subpastas (itens) geram labels no formato `"categoria/item"`.
 
 ---
 
-## 🚀 Instalação e execução
+# 📌 Regras de organização
 
-### Pré-requisitos
+## Categoria simples
 
-- Python 3.9+
+```text
+BancoImagens/pizza/
+```
+
+Resultado:
+
+```json
+{
+  "classe": "pizza"
+}
+```
+
+---
+
+## Categoria com itens
+
+```text
+BancoImagens/massas/carbonara/
+```
+
+Resultado:
+
+```json
+{
+  "classe": "massas",
+  "item": "carbonara"
+}
+```
+
+---
+
+# 🔄 Fluxo completo
+
+```text
+1. Criar categorias
+2. Enviar fotos
+3. Executar treino
+4. Classificar imagens
+5. Ler QR/barcode da comanda
+```
+
+Exemplo:
+
+```text
+POST /categorias
+POST /categorias/pizza/fotos
+POST /treinar
+POST /classify
+```
+
+---
+
+# 🚀 Instalação
+
+## Requisitos
+
+- Python 3.10+
 - pip
 
-### Passos
+---
+
+## Clone o projeto
 
 ```bash
-# 1. Clone o repositório ou copie os arquivos
-git clone <url-do-repo>
-cd projeto
+git clone https://github.com/seuusuario/seuprojeto.git
+cd seuprojeto
+```
 
-# 2. (Opcional) Crie um ambiente virtual
-python -m venv venv
-source venv/bin/activate       # Linux/Mac
-venv\Scripts\activate          # Windows
+---
 
-# 3. Execute a API — as dependências são instaladas automaticamente
+## Instale as dependências
+
+```bash
+pip install fastapi uvicorn[standard] tensorflow opencv-python numpy python-multipart pyzbar
+```
+
+---
+
+# ▶️ Execução
+
+```bash
 python api.py
 ```
 
-> As dependências (`fastapi`, `uvicorn`, `tensorflow`, `opencv-python`, `numpy`, `python-multipart`) são instaladas automaticamente na primeira execução caso não estejam presentes.
+Servidor:
 
-A API estará disponível em:
-
-| URL | Descrição |
-|---|---|
-| `http://localhost:8000` | Raiz da API |
-| `http://localhost:8000/docs` | Swagger UI (documentação interativa) |
-| `http://localhost:8000/redoc` | ReDoc (documentação alternativa) |
+```text
+http://localhost:8000
+```
 
 ---
 
-## 🔄 Fluxo completo de uso
+# 📚 Documentação automática
 
-O diagrama abaixo mostra o caminho típico do zero até classificar uma imagem:
+Swagger UI:
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  1. Preparar o banco de imagens                         │
-│                                                         │
-│  POST /categorias          → cria categoria "pizza"     │
-│  POST /categorias/pizza/fotos  → envia foto_1.jpg       │
-│  POST /categorias/pizza/fotos  → envia foto_2.jpg       │
-│                                                         │
-│  (opcional: usar subpastas/itens)                       │
-│  POST /categorias/massas/itens         → cria "carbonara"│
-│  POST /categorias/massas/itens/carbonara/fotos → foto   │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│  2. Treinar o modelo                                    │
-│                                                         │
-│  POST /treinar             → inicia treino (background) │
-│  GET  /status              → monitora até concluir      │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│  3. Classificar imagens                                 │
-│                                                         │
-│  POST /classify (multipart com a imagem)                │
-│  ← retorna classe, item, confiança e probabilidades     │
-└─────────────────────────────────────────────────────────┘
+```text
+http://localhost:8000/docs
 ```
 
-**Quando retreinar?** Sempre que adicionar, remover ou substituir fotos no banco. O endpoint `GET /status` informa o campo `banco_modificado: true` quando o banco mudou desde o último treino.
+ReDoc:
+
+```text
+http://localhost:8000/redoc
+```
 
 ---
 
-## 📡 Endpoints
+# 📡 Endpoints
 
-### GET /status
+# GET /status
 
-Retorna o estado atual da API: se o modelo está carregado, quais classes existem, se o banco foi modificado e se há treino em andamento.
+Retorna o estado atual da API.
 
-**Resposta:**
+## Exemplo
+
 ```json
 {
   "online": true,
   "modelo_carregado": true,
-  "classes": ["pizza", "massas/carbonara", "massas/bolonhesa"],
+  "classes": [
+    "pizza",
+    "massas/carbonara"
+  ],
   "banco_modificado": false,
-  "treino_em_andamento": false
+  "treino_em_andamento": false,
+  "qr_mode": true
 }
 ```
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| `online` | bool | Sempre `true` se a API estiver respondendo |
-| `modelo_carregado` | bool | `true` se há protótipos e labels carregados na memória |
-| `classes` | array | Lista de classes conhecidas pelo modelo atual |
-| `banco_modificado` | bool | `true` se o banco de imagens mudou desde o último treino |
-| `treino_em_andamento` | bool | `true` enquanto um treino está sendo executado |
 
 ---
 
-### POST /treinar
+## Campos
 
-Inicia o treinamento do modelo com todas as imagens presentes em `BancoImagens/`.
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `online` | bool | API online |
+| `modelo_carregado` | bool | Modelo carregado |
+| `classes` | array | Classes disponíveis |
+| `banco_modificado` | bool | Banco mudou desde último treino |
+| `treino_em_andamento` | bool | Existe treino em andamento |
+| `qr_mode` | bool | Leitura QR/barcode habilitada |
 
-**Query parameters:**
+---
 
-| Parâmetro | Tipo | Padrão | Descrição |
-|---|---|---|---|
-| `sincrono` | bool | `false` | Se `true`, a requisição aguarda o treino concluir antes de retornar |
+# POST /treinar
 
-**Exemplo — treino assíncrono (recomendado):**
+Executa o treino do modelo.
+
+---
+
+## Query Params
+
+| Parâmetro | Tipo | Padrão |
+|---|---|---|
+| `sincrono` | bool | false |
+
+---
+
+## Treino assíncrono
+
 ```bash
 curl -X POST http://localhost:8000/treinar
 ```
+
+Resposta:
+
 ```json
 {
   "ok": true,
-  "mensagem": "Treino iniciado em background. Consulte GET /status."
+  "mensagem": "Treino iniciado."
 }
 ```
 
-**Exemplo — treino síncrono:**
+---
+
+## Treino síncrono
+
 ```bash
 curl -X POST "http://localhost:8000/treinar?sincrono=true"
 ```
+
+Resposta:
+
 ```json
 {
   "ok": true,
-  "classes": ["pizza", "massas/carbonara"],
+  "classes": [
+    "pizza",
+    "massas/carbonara"
+  ],
   "log": [
     "[pizza] 3 imagem(ns)",
     "[massas/carbonara] 2 imagem(ns)",
-    "Treino concluído. 2 classe(s)."
+    "Treino concluído (2 classes)"
   ]
 }
 ```
 
-**Erros possíveis:**
+---
+
+## Possíveis erros
 
 | Código | Motivo |
 |---|---|
-| `409` | Já existe um treino em andamento |
-| `500` | Nenhuma categoria encontrada ou erro interno |
-
-> **Atenção:** O treino recarrega o MobileNetV2 na primeira execução, o que pode levar alguns segundos (ou minutos na primeira vez que baixar os pesos). Execuções subsequentes são muito mais rápidas.
+| `409` | Treino já em andamento |
+| `500` | Erro interno |
 
 ---
 
-### POST /classify
+# POST /classify
 
-Classifica uma imagem enviada via `multipart/form-data`. O campo do arquivo deve se chamar `file`.
+Classifica uma imagem e tenta ler QR/barcode simultaneamente.
 
-**Requisição:**
+---
+
+## Requisição
+
 ```bash
 curl -X POST http://localhost:8000/classify \
-  -F "file=@minha_foto.jpg"
+  -F "file=@foto.jpg"
 ```
 
-**Resposta — classificação bem-sucedida:**
+---
+
+## Resposta
+
 ```json
 {
   "classe": "pizza",
@@ -266,64 +398,81 @@ curl -X POST http://localhost:8000/classify \
   "confianca": 0.8732,
   "todas": {
     "pizza": 0.8732,
-    "massas/carbonara": 0.0891,
-    "massas/bolonhesa": 0.0377
+    "massas/carbonara": 0.1268
   },
-  "indefinido": false
+  "indefinido": false,
+  "comanda": "42"
 }
 ```
 
-**Resposta — abaixo do limiar de confiança:**
+---
+
+## Resultado indefinido
+
 ```json
 {
   "classe": "",
   "item": "",
   "confianca": 0.0,
   "todas": {
-    "pizza": 0.3821,
-    "massas/carbonara": 0.3512,
-    "massas/bolonhesa": 0.2667
+    "pizza": 0.45,
+    "massas/carbonara": 0.55
   },
-  "indefinido": true
+  "indefinido": true,
+  "comanda": "42"
 }
 ```
 
+---
+
+## Campos
+
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `classe` | string | Nome da categoria identificada (vazio se indefinido) |
-| `item` | string | Subitem identificado, se houver (ex: `"carbonara"`) |
-| `confianca` | float | Probabilidade da melhor classe (0.0 a 1.0) |
-| `todas` | object | Probabilidade de todas as classes conhecidas |
-| `indefinido` | bool | `true` se a confiança ficou abaixo de 50% |
-
-**Erros possíveis:**
-
-| Código | Motivo |
-|---|---|
-| `400` | Arquivo enviado não é uma imagem válida |
-| `503` | Modelo não carregado — execute `POST /treinar` primeiro |
+| `classe` | string | Categoria identificada |
+| `item` | string | Subitem identificado |
+| `confianca` | float | Confiança da predição |
+| `todas` | object | Todas as probabilidades |
+| `indefinido` | bool | Resultado abaixo do limiar |
+| `comanda` | string | Número extraído do QR/barcode |
 
 ---
 
-### GET /categorias
+## Possíveis erros
 
-Lista todas as categorias cadastradas no banco, incluindo itens (subpastas) e nomes dos arquivos de foto.
+| Código | Motivo |
+|---|---|
+| `400` | Imagem inválida |
+| `503` | Modelo não carregado |
 
-**Resposta:**
+---
+
+# GET /categorias
+
+Lista todas as categorias.
+
+---
+
+## Resposta
+
 ```json
 [
   {
     "nome": "pizza",
     "itens": [],
-    "fotos": ["pizza_1.jpg", "pizza_2.jpg"],
-    "total": 2
+    "fotos": [
+      "pizza_1.jpg"
+    ],
+    "total": 1
   },
   {
     "nome": "massas",
     "itens": [
       {
         "nome": "carbonara",
-        "fotos": ["carbonara_1.jpg"],
+        "fotos": [
+          "carbonara_1.jpg"
+        ],
         "total": 1
       }
     ],
@@ -335,247 +484,390 @@ Lista todas as categorias cadastradas no banco, incluindo itens (subpastas) e no
 
 ---
 
-### POST /categorias
+# POST /categorias
 
-Cria uma nova categoria (pasta) no banco de imagens.
-
-**Body (JSON):**
-```json
-{ "nome": "sushi" }
-```
-
-**Resposta:**
-```json
-{ "ok": true, "categoria": "sushi" }
-```
-
-**Erros possíveis:**
-
-| Código | Motivo |
-|---|---|
-| `400` | Nome vazio ou inválido |
-| `409` | Categoria já existe |
+Cria uma nova categoria.
 
 ---
 
-### DELETE /categorias/{nome}
+## Body
 
-Remove uma categoria e **todas** as fotos e subpastas dentro dela.
-
-```bash
-curl -X DELETE http://localhost:8000/categorias/sushi
-```
-
-**Resposta:**
-```json
-{ "ok": true, "removido": "sushi" }
-```
-
-**Erros possíveis:**
-
-| Código | Motivo |
-|---|---|
-| `404` | Categoria não encontrada |
-
----
-
-### POST /categorias/{nome}/fotos
-
-Adiciona uma foto diretamente a uma categoria (sem subpasta/item). O arquivo é salvo com nome automático no formato `{categoria}_{n}.ext`.
-
-```bash
-curl -X POST http://localhost:8000/categorias/pizza/fotos \
-  -F "file=@nova_pizza.jpg"
-```
-
-**Resposta:**
-```json
-{ "ok": true, "arquivo": "pizza_3.jpg", "categoria": "pizza" }
-```
-
-**Erros possíveis:**
-
-| Código | Motivo |
-|---|---|
-| `404` | Categoria não encontrada |
-| `400` | Formato de imagem não suportado |
-
-> Formatos aceitos: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.webp`
-
----
-
-### DELETE /categorias/{nome}/fotos/{arquivo}
-
-Remove uma foto específica de uma categoria.
-
-```bash
-curl -X DELETE http://localhost:8000/categorias/pizza/fotos/pizza_1.jpg
-```
-
-**Resposta:**
-```json
-{ "ok": true, "removido": "pizza_1.jpg" }
-```
-
----
-
-### POST /categorias/{nome}/itens
-
-Cria um item (subpasta) dentro de uma categoria existente. Itens são usados para classificar variações de uma mesma categoria.
-
-**Body (JSON):**
-```json
-{ "nome": "quattro-stagioni" }
-```
-
-```bash
-curl -X POST http://localhost:8000/categorias/pizza/itens \
-  -H "Content-Type: application/json" \
-  -d '{"nome": "quattro-stagioni"}'
-```
-
-**Resposta:**
-```json
-{ "ok": true, "categoria": "pizza", "item": "quattro-stagioni" }
-```
-
-**Erros possíveis:**
-
-| Código | Motivo |
-|---|---|
-| `404` | Categoria não encontrada |
-| `400` | Nome vazio ou inválido |
-| `409` | Item já existe nessa categoria |
-
----
-
-### DELETE /categorias/{nome}/itens/{item}
-
-Remove um item e **todas** as fotos dentro dele.
-
-```bash
-curl -X DELETE http://localhost:8000/categorias/pizza/itens/quattro-stagioni
-```
-
-**Resposta:**
-```json
-{ "ok": true, "removido": "pizza/quattro-stagioni" }
-```
-
----
-
-### POST /categorias/{nome}/itens/{item}/fotos
-
-Adiciona uma foto a um item (subpasta) de uma categoria. O arquivo é salvo com nome automático no formato `{item}_{n}.ext`.
-
-```bash
-curl -X POST http://localhost:8000/categorias/massas/itens/carbonara/fotos \
-  -F "file=@carbonara_nova.jpg"
-```
-
-**Resposta:**
 ```json
 {
-  "ok": true,
-  "arquivo": "carbonara_2.jpg",
-  "categoria": "massas",
-  "item": "carbonara"
+  "nome": "sushi"
 }
 ```
 
 ---
 
-### DELETE /categorias/{nome}/itens/{item}/fotos/{arquivo}
+## Resposta
 
-Remove uma foto específica de um item.
+```json
+{
+  "ok": true,
+  "categoria": "sushi"
+}
+```
+
+---
+
+# DELETE /categorias/{categoria}
+
+Remove uma categoria inteira.
+
+---
+
+## Exemplo
 
 ```bash
-curl -X DELETE http://localhost:8000/categorias/massas/itens/carbonara/fotos/carbonara_1.jpg
+curl -X DELETE http://localhost:8000/categorias/sushi
 ```
 
-**Resposta:**
+---
+
+# POST /categorias/{categoria}/itens
+
+Cria um subitem.
+
+---
+
+## Body
+
 ```json
-{ "ok": true, "removido": "carbonara_1.jpg" }
+{
+  "nome": "carbonara"
+}
 ```
 
 ---
 
-## 🔬 Conceitos técnicos
+## Exemplo
 
-### MobileNetV2 como extrator de features
-
-O MobileNetV2 é uma rede neural treinada em 1.2 milhão de imagens (ImageNet). Em vez de usar sua camada de classificação final, a API usa apenas o **corpo da rede** (`include_top=False, pooling="avg"`), que transforma qualquer imagem 224×224 em um vetor de **1280 números** que representa as características visuais daquela imagem — texturas, formas, cores, padrões.
-
-### Protótipos e similaridade de cosseno
-
-Para cada classe, o **protótipo** é a média normalizada de todos os embeddings das imagens de treino daquela classe. É um vetor que representa o "centro visual" da categoria.
-
-Na classificação, a similaridade de cosseno mede o ângulo entre o embedding da imagem nova e cada protótipo. Valores próximos de `1.0` indicam alta similaridade; próximos de `0.0` indicam imagens completamente diferentes.
-
-### Data Augmentation
-
-Quando uma categoria tem menos de 5 imagens, o sistema gera variações automáticas de cada foto:
-- Espelhamento horizontal
-- Brilho aumentado (+20%)
-- Brilho reduzido (-20%)
-- Rotação de +10°
-- Rotação de -10°
-
-Isso amplia artificialmente o banco e melhora a robustez do protótipo.
-
-### Limiar de confiança
-
-O sistema aplica **softmax com temperatura 10** sobre as similaridades de cosseno, gerando probabilidades. Se a maior probabilidade for menor que **50% (0.50)**, a classificação é marcada como `indefinido: true` — indicando que a imagem não se encaixa com confiança em nenhuma classe conhecida.
-
-### Exportação TFLite
-
-Após cada treino, o modelo completo (extrator + comparação com protótipos + softmax) é exportado como um arquivo `.tflite` em `models/classificador.tflite`, pronto para uso em aplicações mobile (Android/iOS) ou dispositivos de borda (Raspberry Pi, Coral, etc.).
-
-### Detecção de mudanças no banco
-
-O sistema mantém um snapshot (`banco_snapshot.json`) com o caminho e tamanho de cada imagem no banco. A cada chamada a `GET /status`, o snapshot atual é comparado com o salvo. Se houver diferença, `banco_modificado` retorna `true`, sinalizando que um novo treino é necessário.
+```bash
+curl -X POST http://localhost:8000/categorias/massas/itens \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"carbonara"}'
+```
 
 ---
 
-## ❓ Perguntas frequentes
+# DELETE /categorias/{categoria}/itens/{item}
 
-**Quantas fotos preciso por categoria?**
-O mínimo funcional é 1 foto. Com menos de 5 fotos, data augmentation é aplicada automaticamente. Para melhores resultados, recomenda-se ao menos 5–10 fotos variadas por categoria.
+Remove um subitem.
 
-**O modelo é salvo entre reinicializações?**
-Sim. Os arquivos `labels.json` e `prototipos.npy` são salvos em disco após cada treino e recarregados automaticamente quando a API inicia.
+---
 
-**Posso usar GPU?**
-Sim. Se o TensorFlow encontrar uma GPU disponível (CUDA configurado), ele a utilizará automaticamente. A API não requer configuração adicional para isso.
+# POST /categorias/{categoria}/fotos
 
-**Posso rodar com Docker?**
-Sim. Exemplo mínimo de `Dockerfile`:
+Envia uma foto para categoria ou item.
+
+---
+
+## Categoria simples
+
+```bash
+curl -X POST http://localhost:8000/categorias/pizza/fotos \
+  -F "file=@pizza.jpg"
+```
+
+---
+
+## Subitem
+
+```bash
+curl -X POST "http://localhost:8000/categorias/massas/fotos?item=carbonara" \
+  -F "file=@carbonara.jpg"
+```
+
+---
+
+## Resposta
+
+```json
+{
+  "ok": true,
+  "categoria": "pizza",
+  "item": null,
+  "arquivo": "pizza.jpg"
+}
+```
+
+---
+
+# DELETE /categorias/{categoria}/fotos/{foto}
+
+Remove foto de categoria.
+
+---
+
+# POST /categorias/{categoria}/itens/{item}/fotos
+
+Upload direto para item.
+
+---
+
+# DELETE /categorias/{categoria}/itens/{item}/fotos/{foto}
+
+Remove foto de item.
+
+---
+
+# 🔬 Conceitos técnicos
+
+# MobileNetV2
+
+A MobileNetV2 foi treinada originalmente na base ImageNet com milhões de imagens.
+
+Na API ela é usada apenas como:
+
+# Extrator de Features
+
+A saída da rede é um vetor de:
+
+```text
+1280 dimensões
+```
+
+representando características visuais da imagem.
+
+---
+
+# Similaridade de cosseno
+
+A classificação usa:
+
+```text
+produto escalar normalizado
+```
+
+para medir o quanto dois embeddings são parecidos.
+
+Valores próximos de:
+
+```text
+1.0
+```
+
+indicam imagens semelhantes.
+
+---
+
+# Softmax
+
+A API transforma similaridades em probabilidades utilizando:
+
+```text
+exp(similaridade * 8)
+```
+
+---
+
+# Data augmentation
+
+Quando uma classe possui menos de 5 imagens, a API gera automaticamente:
+
+- flip horizontal
+- brilho +20%
+- brilho -20%
+- rotação +10°
+- rotação -10°
+
+---
+
+# Snapshot do banco
+
+A API monitora alterações no banco de imagens através de:
+
+```text
+models/banco_snapshot.json
+```
+
+Sempre que imagens forem:
+
+- adicionadas
+- removidas
+- substituídas
+
+o endpoint `/status` retornará:
+
+```json
+{
+  "banco_modificado": true
+}
+```
+
+---
+
+# QR Code / Barcode
+
+A leitura de comandas utiliza:
+
+```text
+pyzbar
+```
+
+A API:
+
+1. detecta QR/barcode
+2. extrai texto
+3. mantém apenas números
+4. aceita códigos de 1 a 4 dígitos
+
+---
+
+# ⚡ Performance
+
+Valores médios em CPU:
+
+| Operação | Tempo |
+|---|---|
+| Classificação | ~80–150ms |
+| Leitura QR | ~5–20ms |
+| Treino pequeno | ~5–20s |
+| Treino médio | ~20–60s |
+
+Resultados variam conforme hardware.
+
+---
+
+# ✅ Vantagens da arquitetura
+
+- Não exige GPU
+- Retreino extremamente rápido
+- Fácil adicionar novas classes
+- Baixo uso de memória
+- Excelente para datasets pequenos
+- Ótimo para sistemas internos
+- Funciona bem em CPU
+
+---
+
+# ⚠️ Limitações
+
+- Não substitui treinamento supervisionado em datasets gigantes
+- Pode confundir pratos visualmente similares
+- Sensível a iluminação extrema
+- Funciona melhor com enquadramento consistente
+- QR/barcode precisam estar visíveis
+
+---
+
+# ❓ Perguntas frequentes
+
+# Quantas fotos preciso?
+
+Mínimo funcional:
+
+```text
+1 foto
+```
+
+Recomendado:
+
+```text
+5–10 fotos variadas por categoria
+```
+
+---
+
+# Precisa de GPU?
+
+Não.
+
+A API foi projetada para funcionar bem em CPU.
+
+---
+
+# O modelo persiste?
+
+Sim.
+
+Arquivos salvos:
+
+```text
+models/labels.json
+models/prototipos.npy
+```
+
+---
+
+# Preciso retreinar quando adicionar fotos?
+
+Sim.
+
+Sempre que:
+
+- adicionar
+- remover
+- substituir imagens
+
+---
+
+# Posso usar Docker?
+
+Sim.
+
+---
+
+## Dockerfile
+
 ```dockerfile
 FROM python:3.11-slim
+
 WORKDIR /app
+
 COPY . .
-RUN pip install fastapi uvicorn tensorflow opencv-python numpy python-multipart
+
+RUN pip install fastapi uvicorn[standard] tensorflow opencv-python numpy python-multipart pyzbar
+
 EXPOSE 8000
+
 CMD ["python", "api.py"]
 ```
 
-**Como integrar com um frontend?**
-A API tem CORS liberado para todas as origens (`*`). Basta fazer requisições HTTP normais do seu frontend. Para classificar, envie um `FormData` com o campo `file` contendo a imagem:
+---
+
+# Como integrar frontend?
+
+Exemplo JavaScript:
+
 ```javascript
 const form = new FormData();
-form.append("file", inputFile.files[0]);
+
+form.append("file", input.files[0]);
+
 const res = await fetch("http://localhost:8000/classify", {
   method: "POST",
-  body: form,
+  body: form
 });
-const resultado = await res.json();
-```
 
-**O que acontece se eu enviar uma imagem de algo completamente diferente?**
-O campo `indefinido` retornará `true` e `confianca` será `0.0`. O sistema só afirma uma classe quando tem pelo menos 50% de certeza.
+const data = await res.json();
+
+console.log(data);
+```
 
 ---
 
-## 📄 Licença
+# E se a imagem não pertencer a nenhuma classe?
 
-Distribuído sob a licença MIT. Consulte o arquivo `LICENSE` para mais detalhes.
+A API retornará:
+
+```json
+{
+  "indefinido": true
+}
+```
+
+---
+
+# 📄 Licença
+
+Distribuído sob licença MIT.
+
+Consulte o arquivo:
+
+```text
+LICENSE
+```
+
+para mais detalhes.
